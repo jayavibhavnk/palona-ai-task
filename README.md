@@ -29,10 +29,8 @@ A production-ready demo of a **chat-based commerce agent** with:
   * [Backend (Google Cloud / any host)](#backend-google-cloud--any-host)
 * [API Reference](#api-reference)
 * [Data & Search](#data--search)
-* [UI Features](#ui-features)
 * [Common Fixes / Troubleshooting](#common-fixes--troubleshooting)
 * [Security Notes](#security-notes)
-* [Roadmap](#roadmap)
 * [License](#license)
 
 ---
@@ -290,25 +288,6 @@ Resets in-memory session storage.
 * **Drag & Drop image** into the bottom bar to trigger `/image` with base64.
 * Assistant replies rendered as **Markdown** (`react-markdown + remark-gfm`).
 * Product cards inline in chat, with “Add to cart” button posting `#index` to backend.
-* “Cart” button: triggers `/cart/view` and shows LLM’s cart summary in chat.
-* **Scrolling**: stabilized to avoid jumping to page top when typing:
-
-  ```js
-  // Only react to message count and use non-smooth
-  useEffect(() => {
-    if (!listRef.current) return;
-    const last = listRef.current.querySelector("[data-last]");
-    last?.scrollIntoView({ behavior: "auto", block: "end" });
-  }, [messages.length]);
-  ```
-
-  And in the list container, ensure the sentinel exists:
-
-  ```jsx
-  <div data-last="" />
-  ```
-
----
 
 ## Common Fixes / Troubleshooting
 
