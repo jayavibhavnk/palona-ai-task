@@ -11,6 +11,10 @@ A production-ready demo of a **chat-based commerce agent** with:
 - Backend deployed at: `https://macro-crane-474800-p9.uw.r.appspot.com` (Google Cloud Platform)
 - Frontend: React (Vite) — https://palonai-chat.vercel.app/ (Vercel)
 
+## Dataset and Vector DB
+- Created a custom dataset of Amazon products through web scraping, has 22 products for example.
+- Vector DB ingestion code in vdb.py (which was originally an ipynb)
+
 ---
 
 ## Table of Contents
