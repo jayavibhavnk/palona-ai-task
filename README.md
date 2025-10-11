@@ -1,6 +1,6 @@
 # AI Shopping Assistant
 
-A production-ready demo of a **chat-based commerce agent** with:
+A production-ready demo of a **chat-based shopping agent** with:
 
 * **Text recommendations**
 * **Image-based product search** (drag & drop)
