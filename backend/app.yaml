@@ -1,0 +1,15 @@
+runtime: python312
+
+entrypoint: uvicorn main:app --host=0.0.0.0 --port=$PORT
+
+instance_class: F2  # (optional but decent default)
+
+# env_variables:
+#   GROQ_API_KEY: "your_groq_api_key_here"
+#   WEAVIATE_URL: "your_weaviate_url_here"
+#   WEAVIATE_API_KEY: "your_weaviate_api_key_here"
+#   COHERE_API_KEY: "your_cohere_api_key_here"
+
+# optional scaling so you always have one running instance
+automatic_scaling:
+  min_instances: 1

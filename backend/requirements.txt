@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pydantic
+groq
+weaviate-client==4.17.0
+requests
+python-dotenv
