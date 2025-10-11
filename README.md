@@ -8,8 +8,8 @@ A production-ready demo of a **chat-based commerce agent** with:
 * **Markdown** rendering for assistant replies
 * Clean **React + Vite + Tailwind** frontend, FastAPI backend, Weaviate vector DB, and Groq LLM
 
-> Backend deployed at: `https://macro-crane-474800-p9.uw.r.appspot.com`
-> Frontend: React (Vite) — https://palonai-chat.vercel.app/
+- Backend deployed at: `https://macro-crane-474800-p9.uw.r.appspot.com` (Google Cloud Platform)
+- Frontend: React (Vite) — https://palonai-chat.vercel.app/ (Vercer)
 
 ---
 
