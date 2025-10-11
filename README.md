@@ -13,7 +13,8 @@ A production-ready demo of a **chat-based commerce agent** with:
 
 ## Dataset and Vector DB
 - Created a custom dataset of Amazon products through web scraping, has 22 products for example.
-- Vector DB ingestion code in vdb.py (which was originally an ipynb)
+- Vector DB ingestion code in vdb.py (which was originally an ipynb).
+- Used Cohere multimodal embedder which is supported on weaviate.
 
 ---
 
