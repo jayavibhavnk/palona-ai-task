@@ -381,4 +381,4 @@ Cart is session-scoped server-side. Keep the same `session_id` in localStorage. 
 MIT — feel free to adapt and ship.
 
 
-**This readme was generated using AI with human supervision
+**This readme was generated using AI with human supervision**
