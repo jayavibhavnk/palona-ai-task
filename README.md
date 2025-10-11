@@ -1,4 +1,4 @@
-# Commerce Chat — AI Shopping Assistant
+# AI Shopping Assistant
 
 A production-ready demo of a **chat-based commerce agent** with:
 
