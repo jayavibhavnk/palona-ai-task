@@ -338,34 +338,6 @@ If frontend can’t call backend:
   ```
 * If you want to restrict: set `allow_origins=["http://localhost:5173","https://<your-vercel>.vercel.app"]`
 
-### react-markdown “Unexpected className prop”
-
-Use `<ReactMarkdown remarkPlugins={[remarkGfm]}>` **without** `className` on the component itself. Wrap it in a styled div (as shown in your code).
-
-### Random top scroll on send
-
-Change smooth scroll to:
-
-```js
-useEffect(() => {
-  listRef.current?.lastElementChild?.scrollIntoView({ behavior: "auto" });
-}, [messages.length]);
-```
-
-Remove global `scroll-smooth` if applied.
-
-### Drag area too tall / overlapping
-
-Adjust the drag & drop box height (you did already):
-
-```jsx
-style={{ minHeight: "56px", maxHeight: "64px" }}
-```
-
-### Session vs Cart out-of-sync
-
-Cart is session-scoped server-side. Keep the same `session_id` in localStorage. If needed, hit `/cart/view` after mutations to trust server state.
-
 ---
 
 ## Security Notes
