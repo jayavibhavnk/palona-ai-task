@@ -4,28 +4,19 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
-# -------------------------
-# Config flags
-# -------------------------
-USE_HARDCODED_CONNECT = False  # <-- set True to use your exact hardcoded connect snippet below
-import os
-# -------------------------
-# Groq client
-# -------------------------
+USE_HARDCODED_CONNECT = True # because i have a vdb prepared for this 
+
 from groq import Groq
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise RuntimeError("Set GROQ_API_KEY")
 groq_client = Groq(api_key=GROQ_API_KEY)
 
-# -------------------------
-# Weaviate connect (v4)
-# -------------------------
+
 import weaviate
 from weaviate.auth import AuthApiKey
 
-# IMPORTANT: we avoid importing weaviate.classes at top level to prevent version/import flakiness
-# We'll try to import MetadataQuery lazily and fall back if not present.
+
 try:
     from weaviate.classes.query import MetadataQuery  # v4
 except Exception:
@@ -33,12 +24,6 @@ except Exception:
 
 def connect_weaviate():
     if USE_HARDCODED_CONNECT:
-        # ----- YOUR EXACT HARDCODED CONNECT SNIPPET (drop-in) -----
-        # DO NOT COMMIT SECRETS — for local/dev only.
-        # Replace with your values or set USE_HARDCODED_CONNECT=False and use env vars.
-        # from weaviate import connect  # not needed in v4
-        # from weaviate.auth import AuthApiKey  # already imported above
-
         client = weaviate.connect_to_weaviate_cloud(
             cluster_url="xbgyazubtqg88blsthsv8w.c0.us-west3.gcp.weaviate.cloud",
             auth_credentials=AuthApiKey("YOUR_WCS_API_KEY"),
@@ -46,7 +31,7 @@ def connect_weaviate():
         )
         return client
 
-    # ---- ENV-based connect (recommended) ----
+    # for env
     WEAVIATE_URL = os.getenv("WEAVIATE_URL")  # e.g. https://<cluster>.weaviate.network
     WEAVIATE_API_KEY = os.getenv("WEAVIATE_API_KEY")
     COHERE_API_KEY = os.getenv("COHERE_API_KEY")
@@ -70,9 +55,7 @@ client = connect_weaviate()
 # expect your "Product" collection to already exist (as you created/imported it in your notebook)
 coll = client.collections.get("Product")
 
-# -------------------------
-# Session-scoped memory + cart
-# -------------------------
+# max memory
 MEMORY_TURNS = 12
 
 class SessionState(BaseModel):
@@ -91,9 +74,8 @@ def trim_history(st: SessionState):
     while len(st.history) > MEMORY_TURNS:
         st.history.pop(0)
 
-# -------------------------
-# Models
-# -------------------------
+
+# base classes for chat
 class ChatReq(BaseModel):
     session_id: str
     query: str
@@ -121,9 +103,8 @@ class ChatRes(BaseModel):
     products: List[Dict[str, Any]] = []
     cart: List[Dict[str, Any]] = []
 
-# -------------------------
-# Retrieval helpers (your style)
-# -------------------------
+
+# retrieval
 def text_search(q: str, k: int = 5) -> List[Dict[str, Any]]:
     kwargs = dict(
         query=q,
@@ -182,16 +163,36 @@ def image_search(url: str, k: int = 5) -> List[Dict[str, Any]]:
         })
     return out
 
-def format_ctx(items: List[Dict[str, Any]]) -> str:
-    if not items: return "(no product data retrieved)"
-    lines=[]
-    for i,p in enumerate(items,1):
-        lines.append(f"{i}. {p['product_name']} {p.get('price','')}\n   {p.get('description','')}\n   {p.get('url','')}")
-    return "\n".join(lines)
+def format_ctx(items: List[Dict[str, Any]], max_reviews_chars: int = 2000) -> str:
+    if not items:
+        return "(no product data retrieved)"
+    lines = []
+    for i, p in enumerate(items, 1):
+        name = p.get("product_name", "")
+        price = p.get("price", "")
+        desc  = p.get("description", "")
+        url   = p.get("url", "")
+        rating = p.get("rating_overall", "")
+        rcnt   = p.get("review_count", "")
+        rjson  = p.get("reviews_json") or ""
 
-# -------------------------
-# LLM answer (Groq) — grounded on provided context
-# -------------------------
+        # Truncate oversized review payloads to protect token budget
+        if isinstance(rjson, str) and len(rjson) > max_reviews_chars:
+            rjson = rjson[:max_reviews_chars] + "...(truncated)"
+
+        lines.append(
+            f"{i}. {name} {price}\n"
+            f"   Rating: {rating} ({rcnt})\n"
+            f"   {desc}\n"
+            f"   {url}\n"
+            f"   reviews_json (parse this JSON array yourself):\n"
+            f"   ```json\n{rjson}\n```"
+        )
+    return "\n\n".join(lines)
+
+
+
+# groq inference
 def llm_answer(context: str, user_query: str, use_history: Optional[List[Dict[str,str]]] = None) -> str:
     system = (
         "You are Ruf AI, an e-shopping assistant.\n you will explain about the product if required"
@@ -213,9 +214,8 @@ def llm_answer(context: str, user_query: str, use_history: Optional[List[Dict[st
     )
     return resp.choices[0].message.content.strip()
 
-# -------------------------
-# Cart helpers
-# -------------------------
+
+# methods for cart
 def add_idx(st: SessionState, idx: int) -> str:
     if not st.last_results:
         return "There are no recent results. Run a search, then use `add #2`."
@@ -275,14 +275,12 @@ def dataurl_to_b64(data_url: str) -> str:
         raise HTTPException(400, "Invalid data URL")
     return data_url[i+len(prefix):]
 
-# -------------------------
-# FastAPI app
-# -------------------------
+# API
 app = FastAPI(title="Commerce Agent API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or list your domains like ["http://localhost:5173", "https://your-frontend.vercel.app"]
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -302,11 +300,6 @@ def health():
         raise HTTPException(500, str(e))
 
 def should_rag(user_query: str, recent_history: List[Dict[str, str]]) -> bool:
-    """
-    Ask the LLM to return a strict JSON: {"rag": true/false}
-    True when the query likely needs catalog/context lookup (e.g., find/show/compare, reviews/specs/pricing, 'similar to', etc.)
-    False for pure chit-chat, cart-only ops, or follow-ups that don't need new retrieval.
-    """
     sys = (
         "Decide if we should run product retrieval (RAG) for the next user turn.\n"
         "Respond ONLY with strict JSON like {\"rag\": true} or {\"rag\": false}.\n"
@@ -318,7 +311,7 @@ def should_rag(user_query: str, recent_history: List[Dict[str, str]]) -> bool:
 
     msgs = [{"role":"system","content":sys}]
     # keep it tiny to avoid drift
-    for m in recent_history[-4:]:
+    for m in recent_history:
         msgs.append(m)
     msgs.append({"role":"user","content":f"User: {user_query}\nReturn JSON now."})
 
@@ -340,39 +333,69 @@ def should_rag(user_query: str, recent_history: List[Dict[str, str]]) -> bool:
         return True
 
 @app.post("/chat", response_model=ChatRes)
+@app.post("/chat", response_model=ChatRes)
 def chat(req: ChatReq):
     st = state_for(req.session_id)
     q = req.query.strip()
 
-    # ---- LLM decides if we should RAG this turn (conditional, no rigid keywords) ---
     do_rag = should_rag(q, st.history)
 
     products: List[Dict[str, Any]] = []
     if do_rag:
         products = text_search(q, k=5)
-
-        # Fallback: light typo/cleanup normalization if first pass is empty
         if not products:
             q2 = re.sub(r"[^a-zA-Z0-9\s]", " ", q)
             q2 = re.sub(r"\s+", " ", q2).strip()
             if q2 and q2 != q:
                 products = text_search(q2, k=5)
-
         if products:
             st.last_results = products[:]
+    else:
+        # ✅ critical: keep using previous results when the user is asking follow-ups (like “show me reviews”)
+        products = st.last_results[:] if st.last_results else []
 
-    # Build context from whatever we found (may be empty if do_rag=False or no hits)
-    context = format_ctx(products)
-
-    # Include short history so the convo flows naturally
+    context = format_ctx(products)  # (this will be updated in the next section)
     ans = llm_answer(context, q, use_history=st.history[-(MEMORY_TURNS-2):])
 
-    # Track history
     st.history.append({"role":"user","content":q})
     st.history.append({"role":"assistant","content":ans})
     trim_history(st)
 
     return ChatRes(answer=ans, products=products, cart=st.cart)
+
+# def chat(req: ChatReq):
+#     st = state_for(req.session_id)
+#     q = req.query.strip()
+
+#     # ---- LLM decides if we should RAG this turn (conditional, no rigid keywords) ---
+#     do_rag = should_rag(q, st.history)
+
+#     products: List[Dict[str, Any]] = []
+#     if do_rag:
+#         products = text_search(q, k=5)
+
+#         # Fallback: light typo/cleanup normalization if first pass is empty
+#         if not products:
+#             q2 = re.sub(r"[^a-zA-Z0-9\s]", " ", q)
+#             q2 = re.sub(r"\s+", " ", q2).strip()
+#             if q2 and q2 != q:
+#                 products = text_search(q2, k=5)
+
+#         if products:
+#             st.last_results = products[:]
+
+#     # Build context from whatever we found (may be empty if do_rag=False or no hits)
+#     context = format_ctx(products)
+
+#     # Include short history so the convo flows naturally
+#     ans = llm_answer(context, q, use_history=st.history[-(MEMORY_TURNS-2):])
+
+#     # Track history
+#     st.history.append({"role":"user","content":q})
+#     st.history.append({"role":"assistant","content":ans})
+#     trim_history(st)
+
+#     return ChatRes(answer=ans, products=products, cart=st.cart)
 
 
 @app.post("/image", response_model=ChatRes)
